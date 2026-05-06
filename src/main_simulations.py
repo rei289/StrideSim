@@ -1,7 +1,9 @@
 """Test script to deploy directly in GCP."""
 import os
+import random
 import time
 
+import pyarrow.parquet as pq
 import stride_sim_rust
 from dotenv import load_dotenv
 
@@ -10,6 +12,34 @@ from src.simulation.monte_carlo_simulation import (
 )
 from src.utilis.helper import job_id, time_now
 from src.utilis.logger import StrideSimLogger
+
+
+def load_runners_from_parquet(parquet_path: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
+    """Load runner parameters from a Parquet file and convert to RunnerParams objects."""
+    table = pq.read_table(parquet_path)
+    n = table.num_rows
+
+    # choose random indices without replacement if there are more rows than desired_num
+    indices = random.sample(range(n), k=desired_num) if n > desired_num else list(range(n))
+
+    rows = table.take(indices).to_pydict()
+    return [stride_sim_rust.RunnerParams(
+        runner_id=int(row["runner_id"]),
+        f_max=float(row["f_max"]),
+        e_init=float(row["e_init"]),
+        tau=float(row["tau"]),
+        sigma=float(row["sigma"]),
+        gamma=float(row["gamma"]),
+        drag_coefficient=float(row["drag_coefficient"]),
+        frontal_area=float(row["frontal_area"]),
+        mass=float(row["mass"]),
+        rho=float(row["rho"]),
+        convection=float(row["convection"]),
+        alpha=float(row["alpha"]),
+        psi=float(row["psi"]),
+        const_v=float(row["const_v"]),
+        pacing=str(row["pacing"]),
+    ) for row in rows]
 
 config = stride_sim_rust.SimulationConfig(
     target_dist=43_000,

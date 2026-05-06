@@ -158,7 +158,7 @@ StrideSim/
 ├── src/                              # Main source code
 │   ├── main_runs.py                  # Run execution
 │   ├── main_simulations.py           # Simulation execution
-│   ├── main_trainings.py             # Training pipeline
+│   ├── main_trainings.py             # Training execution
 │   ├── model_training/               # ML model training
 │   ├── process_runs/                 # Data processing for runs
 │   ├── simulation/                   # Core simulation logic
@@ -170,8 +170,6 @@ StrideSim/
 │   └── units.yml                     # Unit definitions
 ├── notebooks/                        # Jupyter notebooks for exploration
 ├── tests/                            # Test suite
-├── running_simulation_data/          # Cached simulation results
-├── runs/                             # Historical run data
 ├── requirements*.txt                 # Dependency specifications
 └── docker-compose.yml                # Docker configuration
 ```
