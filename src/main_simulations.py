@@ -2,10 +2,13 @@
 import os
 import random
 import time
+from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import stride_sim_rust
 from dotenv import load_dotenv
+from google.cloud import storage
 
 from src.simulation.monte_carlo_simulation import (
     MonteCarloSimulation,
@@ -14,15 +17,60 @@ from src.utilis.helper import job_id, time_now
 from src.utilis.logger import StrideSimLogger
 
 
-def load_runners_from_parquet(parquet_path: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
+def load_runners_local(bucket_name: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
     """Load runner parameters from a Parquet file and convert to RunnerParams objects."""
-    table = pq.read_table(parquet_path)
+    # get runners from parquet file
+    trainings_root = Path(bucket_name) / "02_trainings"
+    training_data = trainings_root / "runner_parameters.parquet"
+
+    if not training_data.exists():
+        return []
+    table = pq.read_table(training_data)
     n = table.num_rows
 
     # choose random indices without replacement if there are more rows than desired_num
     indices = random.sample(range(n), k=desired_num) if n > desired_num else list(range(n))
 
-    rows = table.take(indices).to_pydict()
+    sampled = table.take(pa.array(indices.tolist(), type=pa.int64()))
+    rows = sampled.to_pylist()
+
+    return [stride_sim_rust.RunnerParams(
+        runner_id=int(row["runner_id"]),
+        f_max=float(row["f_max"]),
+        e_init=float(row["e_init"]),
+        tau=float(row["tau"]),
+        sigma=float(row["sigma"]),
+        gamma=float(row["gamma"]),
+        drag_coefficient=float(row["drag_coefficient"]),
+        frontal_area=float(row["frontal_area"]),
+        mass=float(row["mass"]),
+        rho=float(row["rho"]),
+        convection=float(row["convection"]),
+        alpha=float(row["alpha"]),
+        psi=float(row["psi"]),
+        const_v=float(row["const_v"]),
+        pacing=str(row["pacing"]),
+    ) for row in rows]
+
+def load_runners_gcp(bucket_name: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
+    """Load runner parameters from a Parquet file and convert to RunnerParams objects."""
+    # get runners from parquet file
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    training_blob = bucket.blob("02_trainings/runner_parameters.parquet")
+
+    if not training_blob.exists():
+        return []
+    training_data = training_blob.download_as_bytes()
+    table = pq.read_table(training_data)
+    n = table.num_rows
+
+    # choose random indices without replacement if there are more rows than desired_num
+    indices = random.sample(range(n), k=desired_num) if n > desired_num else list(range(n))
+
+    sampled = table.take(pa.array(indices.tolist(), type=pa.int64()))
+    rows = sampled.to_pylist()
+
     return [stride_sim_rust.RunnerParams(
         runner_id=int(row["runner_id"]),
         f_max=float(row["f_max"]),
@@ -104,6 +152,15 @@ if __name__ == "__main__":
 
         # change the simulation result path to the local bucket folder
         config.result_path = f"{bucket_name}/{folder_name}/{jid}"
+
+        logger.info("Loading runner parameters")
+        runners = load_runners_local(bucket_name, config.num_sim)
+        if runners:
+            logger.info(f"Loaded parameters for {len(runners)} runners")
+        else:
+            logger.warning("Training data not found. Using default runner parameters.")
+
+
     elif execution_env == "gcp":
         # get bucket name from environment variable
         bucket_name = os.getenv("BUCKET_NAME")
@@ -119,6 +176,14 @@ if __name__ == "__main__":
 
         # change the simulation result path to a temporary local path
         config.result_path = "/tmp/stride_sim" # noqa S108
+
+        # get runners from parquet file
+        logger.info("Loading runner parameters")
+        runners = load_runners_gcp(bucket_name, config.num_sim)
+        if runners:
+            logger.info(f"Loaded parameters for {len(runners)} runners")
+        else:
+            logger.warning("Training data not found. Using default runner parameters.")
     else:
         logger_mgr = StrideSimLogger(execution_env=execution_env, bucket_name=None, folder_name=f"{folder_name}/{jid}")
         logger = logger_mgr.setup_logger()
