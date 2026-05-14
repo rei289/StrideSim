@@ -30,7 +30,7 @@ def load_runners_local(bucket_name: str, desired_num: int, seed:int=42) -> list[
 
     # choose random indices with replacement if there are less rows than desired_num, otherwise without replacement
     random.seed(seed)
-    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num)
+    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num) #noqa
 
     sampled = table.take(pa.array(indices, type=pa.int64()))
     rows = sampled.to_pylist()
@@ -68,7 +68,7 @@ def load_runners_gcp(bucket_name: str, desired_num: int, seed:int=42) -> list[st
 
     # choose random indices with replacement if there are less rows than desired_num, otherwise without replacement
     random.seed(seed)
-    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num)
+    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num) #noqa
 
     sampled = table.take(pa.array(indices, type=pa.int64()))
     rows = sampled.to_pylist()
