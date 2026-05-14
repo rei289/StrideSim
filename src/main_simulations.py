@@ -62,8 +62,8 @@ def load_runners_gcp(bucket_name: str, desired_num: int, seed:int=42) -> list[st
 
     if not training_blob.exists():
         return []
-    training_data = training_blob.download_as_bytes()
-    table = pq.read_table(training_data)
+    training_data_bytes = training_blob.download_as_bytes()
+    table = pq.read_table(pa.BufferReader(training_data_bytes))
     n = table.num_rows
 
     # choose random indices with replacement if there are less rows than desired_num, otherwise without replacement
