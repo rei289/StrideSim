@@ -12,6 +12,6 @@ packages = { find = { where = ["."], include = ["*"] } }
 
 [tool.ruff]
 lint.extend-select = ["ALL"]
-lint.ignore = ["T201", "S101", "PLR2004", "PD002", "G004", "PGH004", "D203", "D213", "W191"]
+lint.ignore = ["T201", "S101", "PLR2004", "PD002", "G004", "PGH004", "D203", "D213", "W191", "S331"]
 line-length = 150
 extend-exclude = ["*.ipynb"]

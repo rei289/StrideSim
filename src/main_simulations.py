@@ -17,7 +17,7 @@ from src.utilis.helper import job_id, time_now
 from src.utilis.logger import StrideSimLogger
 
 
-def load_runners_local(bucket_name: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
+def load_runners_local(bucket_name: str, desired_num: int, seed:int=42) -> list[stride_sim_rust.RunnerParams]:
     """Load runner parameters from a Parquet file and convert to RunnerParams objects."""
     # get runners from parquet file
     trainings_root = Path(bucket_name) / "02_trainings"
@@ -28,14 +28,15 @@ def load_runners_local(bucket_name: str, desired_num: int) -> list[stride_sim_ru
     table = pq.read_table(training_data)
     n = table.num_rows
 
-    # choose random indices without replacement if there are more rows than desired_num
-    indices = random.sample(range(n), k=desired_num) if n > desired_num else list(range(n))
+    # choose random indices with replacement if there are less rows than desired_num, otherwise without replacement
+    random.seed(seed)
+    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num)
 
-    sampled = table.take(pa.array(indices.tolist(), type=pa.int64()))
+    sampled = table.take(pa.array(indices, type=pa.int64()))
     rows = sampled.to_pylist()
 
     return [stride_sim_rust.RunnerParams(
-        runner_id=int(row["runner_id"]),
+        runner_id=i,
         f_max=float(row["f_max"]),
         e_init=float(row["e_init"]),
         tau=float(row["tau"]),
@@ -50,9 +51,9 @@ def load_runners_local(bucket_name: str, desired_num: int) -> list[stride_sim_ru
         psi=float(row["psi"]),
         const_v=float(row["const_v"]),
         pacing=str(row["pacing"]),
-    ) for row in rows]
+    ) for i, row in enumerate(rows)]
 
-def load_runners_gcp(bucket_name: str, desired_num: int) -> list[stride_sim_rust.RunnerParams]:
+def load_runners_gcp(bucket_name: str, desired_num: int, seed:int=42) -> list[stride_sim_rust.RunnerParams]:
     """Load runner parameters from a Parquet file and convert to RunnerParams objects."""
     # get runners from parquet file
     client = storage.Client()
@@ -65,14 +66,15 @@ def load_runners_gcp(bucket_name: str, desired_num: int) -> list[stride_sim_rust
     table = pq.read_table(training_data)
     n = table.num_rows
 
-    # choose random indices without replacement if there are more rows than desired_num
-    indices = random.sample(range(n), k=desired_num) if n > desired_num else list(range(n))
+    # choose random indices with replacement if there are less rows than desired_num, otherwise without replacement
+    random.seed(seed)
+    indices = random.choices(range(n), k=desired_num) if n < desired_num else random.sample(range(n), k=desired_num)
 
-    sampled = table.take(pa.array(indices.tolist(), type=pa.int64()))
+    sampled = table.take(pa.array(indices, type=pa.int64()))
     rows = sampled.to_pylist()
 
     return [stride_sim_rust.RunnerParams(
-        runner_id=int(row["runner_id"]),
+        runner_id=i,
         f_max=float(row["f_max"]),
         e_init=float(row["e_init"]),
         tau=float(row["tau"]),
@@ -87,7 +89,7 @@ def load_runners_gcp(bucket_name: str, desired_num: int) -> list[stride_sim_rust
         psi=float(row["psi"]),
         const_v=float(row["const_v"]),
         pacing=str(row["pacing"]),
-    ) for row in rows]
+    ) for i, row in enumerate(rows)]
 
 config = stride_sim_rust.SimulationConfig(
     target_dist=43_000,
