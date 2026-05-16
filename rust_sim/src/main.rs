@@ -57,12 +57,14 @@ fn main() {
         temperature: ThermodynamicTemperature::new::<degree_celsius>(20.0),
         humidity: 0.50,
         solar_radiation: HeatFluxDensity::new::<watt_per_square_meter>(800.0),
+        wind_speed: Velocity::new::<meter_per_second>(5.0),
+        wind_azimuth: 90.0,
     };
 
     let course = CourseProfile {
         distance: vec![Length::new::<meter>(0.0), Length::new::<meter>(10_000.0), Length::new::<meter>(20_000.0), Length::new::<meter>(30_000.0), Length::new::<meter>(42_195.0)],
         grade: vec![0.0; 5],
-        headwind: vec![Velocity::new::<meter_per_second>(0.0); 5],
+        azimuth: vec![0.0; 5],
     };
 
     let input = SimulationInput {

@@ -80,16 +80,22 @@ struct Weather {
 	humidity: Option<f64>,
 	#[pyo3(get, set)]
 	solar_radiation: Option<f64>,
+	#[pyo3(get, set)]
+	wind_speed: Option<f64>,
+	#[pyo3(get, set)]
+	wind_azimuth: Option<f64>,
 }
 
 #[pymethods]
 impl Weather {
 	#[new]
-	fn new(temperature: Option<f64>, humidity: Option<f64>, solar_radiation: Option<f64>) -> Self {
+	fn new(temperature: Option<f64>, humidity: Option<f64>, solar_radiation: Option<f64>, wind_speed: Option<f64>, wind_azimuth: Option<f64>) -> Self {
 		Self {
 			temperature,
 			humidity,
 			solar_radiation,
+			wind_speed,
+			wind_azimuth,
 		}
 	}
 }
@@ -100,6 +106,8 @@ impl Weather {
 			temperature: ThermodynamicTemperature::new::<degree_celsius>(self.temperature.unwrap_or(20.0)),
 			humidity: self.humidity.unwrap_or(50.0),
 			solar_radiation: HeatFluxDensity::new::<watt_per_square_meter>(self.solar_radiation.unwrap_or(50.0)),
+			wind_speed: Velocity::new::<meter_per_second>(self.wind_speed.unwrap_or(0.0)),
+			wind_azimuth: self.wind_azimuth.unwrap_or(0.0),
 		}
 	}
 }
@@ -112,17 +120,17 @@ struct CourseProfile {
 	#[pyo3(get, set)]
 	grade: Option<Vec<f64>>,
 	#[pyo3(get, set)]
-	headwind: Option<Vec<f64>>,
+	azimuth: Option<Vec<f64>>,
 }
 
 #[pymethods]
 impl CourseProfile {
 	#[new]
-	fn new(distance: Option<Vec<f64>>, grade: Option<Vec<f64>>, headwind: Option<Vec<f64>>) -> Self {
+	fn new(distance: Option<Vec<f64>>, grade: Option<Vec<f64>>, azimuth: Option<Vec<f64>>) -> Self {
 		Self {
 			distance,
 			grade,
-			headwind,
+			azimuth,
 		}
 	}
 }
@@ -139,8 +147,8 @@ impl CourseProfile {
             .clone()
             .unwrap_or_else(|| vec![0.0]);
 
-        let headwind_vals = self
-            .headwind
+        let azimuth_vals = self
+            .azimuth
             .clone()
             .unwrap_or_else(|| vec![0.0]);
 
@@ -150,10 +158,7 @@ impl CourseProfile {
                 .map(|d| Length::new::<meter>(d))
                 .collect(),
             grade: grade_vals,
-            headwind: headwind_vals
-                .into_iter()
-                .map(|w| Velocity::new::<meter_per_second>(w))
-                .collect(),
+            azimuth: azimuth_vals
         }
     }
 }
