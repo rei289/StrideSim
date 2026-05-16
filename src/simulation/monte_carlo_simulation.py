@@ -35,13 +35,15 @@ def _weather_to_dict(weather: Weather) -> dict[str, float | None]:
         "temperature": weather.temperature,
         "humidity": weather.humidity,
         "solar_radiation": weather.solar_radiation,
+        "wind_speed": weather.wind_speed,
+        "wind_azimuth": weather.wind_azimuth,
     }
 
 def _course_to_dict(course: CourseProfile) -> dict[str, list[float] | None]:
     return {
         "distance": course.distance,
         "grade": course.grade,
-        "headwind": course.headwind,
+        "azimuth": course.azimuth,
     }
 
 

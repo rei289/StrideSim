@@ -51,13 +51,15 @@ pub struct Weather {
     pub temperature: ThermodynamicTemperature,
     pub humidity: f64,                  // relative humidity as a percentage
     pub solar_radiation: HeatFluxDensity, // solar radiation in W/m^2
+    pub wind_speed: Velocity,           // wind speed in m/s
+    pub wind_azimuth: f64,              // wind direction in degrees from north (0-360)
 }
 
 #[derive(Clone, Debug)]
 pub struct CourseProfile {
     pub distance: Vec<Length>,          // distance points for the course profile (m)
     pub grade: Vec<f64>,                // grade at each distance point as a percentage
-    pub headwind: Vec<Velocity>,        // headwind speed at each distance point (m/s, positive for headwind, negative for tailwind)
+    pub azimuth: Vec<f64>,              // azimuth at each distance point in degrees from north (0-360)
 }
 
 #[derive(Clone, Debug)]
@@ -121,7 +123,7 @@ pub struct MonteCarloSimulation {
 
 struct CourseIndex {
     grade_index: usize,
-    headwind_index: usize,
+    azimuth_index: usize,
 }
 
 impl RunnerState {
@@ -194,7 +196,7 @@ impl MonteCarloSimulation {
         if course_len == 0 {
             return Err(SimError::EmptyCourse("course distance must be non-empty"));
         }
-        if input.course.grade.len() != course_len || input.course.headwind.len() != course_len {
+        if input.course.grade.len() != course_len || input.course.azimuth.len() != course_len {
             return Err(SimError::LengthMismatch("course vectors must have equal lengths"));
         }
         
@@ -234,7 +236,7 @@ impl MonteCarloSimulation {
             // keep indices across timesteps so nearest-point search is incremental.
             let mut course_index = CourseIndex {
                 grade_index: 0,
-                headwind_index: 0,
+                azimuth_index: 0,
             };
             
             let mut count = 0;
@@ -311,7 +313,7 @@ impl MonteCarloSimulation {
             // initialize current index for course profile lookup based on current distance
             let mut course_index = CourseIndex {
                 grade_index: 0,
-                headwind_index: 0,
+                azimuth_index: 0,
             };
             // calculate the new input parameters for this runner based on the weather conditions and their individual psi parameters, then perform the simulation for this runner until they finish or reach max steps
             self.init_runner(runner)?;
@@ -548,7 +550,7 @@ impl MonteCarloSimulation {
          */
         let dt = self.input.config.dt;
 
-        let (grade, headwind) = self.lookup_course_conditions(state.distance, &mut course_index.grade_index, &mut course_index.headwind_index)?;
+        let (grade, headwind) = self.lookup_course_conditions(state.distance, &mut course_index.grade_index, &mut course_index.azimuth_index)?;
         
         // let grade = self.get_grade(state.distance, &mut course_index.grade_index)?;
         // let headwind = self.get_headwind(state.distance, &mut course_index.headwind_index)?;
@@ -652,35 +654,43 @@ impl MonteCarloSimulation {
         Ok(decimal_grade.atan())
     }
 
-    fn get_headwind(&self, distance: Length, headwind_index: &mut usize) -> Result<Velocity, SimError> {
+    fn get_headwind(&self, distance: Length, azimuth_index: &mut usize) -> Result<Velocity, SimError> {
         /*
         Helper function to get the headwind at a given distance based on the course profile.
          */
         let course = &self.input.course;
-        let mut current_diff = (distance - course.distance[*headwind_index]).abs().get::<meter>();
+        let mut current_diff = (distance - course.distance[*azimuth_index]).abs().get::<meter>();
 
-        for i in (*headwind_index + 1)..course.distance.len() {
+        for i in (*azimuth_index + 1)..course.distance.len() {
             // get the absolute difference between the current distance and the course distance at index i
             let diff = (distance - course.distance[i]).abs().get::<meter>();
             if diff < current_diff {
                 current_diff = diff;
-                *headwind_index = i;
+                *azimuth_index = i;
             } else {
                 break; // since the course distance is sorted, we can break once the difference starts increasing
             }
         }
 
-        Ok(course.headwind[*headwind_index])
+            // calculate the headwind based on the course azimuth and the wind conditions
+        let course_azimuth = course.azimuth[*azimuth_index];
+        let wind_azimuth = self.input.weather.wind_azimuth;
+        let wind_speed = self.input.weather.wind_speed;
+        let relative_azimuth = (course_azimuth - wind_azimuth).to_radians();
+        let headwind_speed = - wind_speed * relative_azimuth.cos(); // positive if headwind, negative if tailwind
+
+        Ok(headwind_speed)
+
     }
 
     pub fn lookup_course_conditions(
         &self,
         distance: Length,
         grade_index: &mut usize,
-        headwind_index: &mut usize,
+        azimuth_index: &mut usize,
     ) -> Result<(f64, Velocity), SimError> {
         let grade = self.get_grade(distance, grade_index)?;
-        let headwind = self.get_headwind(distance, headwind_index)?;
+        let headwind = self.get_headwind(distance, azimuth_index)?;
         Ok((grade, headwind))
     }
 

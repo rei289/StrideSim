@@ -104,12 +104,14 @@ weather = stride_sim_rust.Weather(
     temperature=20.0,
     humidity=0.50,
     solar_radiation=800.0,
+    wind_speed=5.0,
+    wind_azimuth=90.0,
 )
 
 course = stride_sim_rust.CourseProfile(
     distance=[0.0, 10_000.0, 20_000.0, 30_000.0, 42_195.0],
     grade=[0.0, 0.0, 0.0, 0.0, 0.0],
-    headwind=[0.0, 0.0, 0.0, 0.0, 0.0],
+    azimuth=[0.0, 90.0, 180.0, 270.0, 0.0],
 )
 
 runners = [

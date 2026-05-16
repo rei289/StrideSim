@@ -59,11 +59,13 @@ fn simulation_writes_output_without_error() {
             temperature: ThermodynamicTemperature::new::<degree_celsius>(20.0),
             humidity: 50.0,
             solar_radiation: HeatFluxDensity::new::<watt_per_square_meter>(700.0),
+            wind_speed: Velocity::new::<meter_per_second>(5.0),
+            wind_azimuth: 90.0,
         },
         course: CourseProfile {
             distance: vec![Length::new::<meter>(0.0), Length::new::<meter>(1000.0)],
             grade: vec![0.0, 0.0],
-            headwind: vec![Velocity::new::<meter_per_second>(0.0), Velocity::new::<meter_per_second>(0.0)],
+            azimuth: vec![0.0, 45.0],
         },
         runners,
     };
@@ -189,11 +191,13 @@ fn invalid_simulation_inputs_are_rejected() {
             temperature: ThermodynamicTemperature::new::<degree_celsius>(20.0),
             humidity: 50.0,
             solar_radiation: HeatFluxDensity::new::<watt_per_square_meter>(700.0),
+            wind_speed: Velocity::new::<meter_per_second>(5.0),
+            wind_azimuth: 90.0,
         },
         course: CourseProfile {
             distance: vec![Length::new::<meter>(0.0), Length::new::<meter>(1000.0)],
             grade: vec![0.0, 0.0],
-            headwind: vec![Velocity::new::<meter_per_second>(0.0), Velocity::new::<meter_per_second>(0.0)],
+            azimuth: vec![0.0, 45.0, 90.0, 135.0],
         },
         runners: vec![RunnerParams {
             runner_id: 1 as u32,
@@ -245,14 +249,14 @@ fn invalid_simulation_inputs_are_rejected() {
     let sim_result = MonteCarloSimulation::new(input.clone());
     assert!(sim_result.is_err());
 
-    // change course distance and headwind vectors to different lengths
+    // change course distance and azimuth vectors to different lengths
     input.course.grade = vec![0.0, 0.0]; // reset to valid value
-    input.course.headwind = vec![Velocity::new::<meter_per_second>(0.0)]; // change to different length than distance
+    input.course.azimuth = vec![0.0]; // change to different length than distance
     let sim_result = MonteCarloSimulation::new(input.clone());
     assert!(sim_result.is_err());
 
     // change weather humidity to invalid value
-    input.course.headwind = vec![Velocity::new::<meter_per_second>(0.0), Velocity::new::<meter_per_second>(0.0)]; // reset to valid value
+    input.course.azimuth = vec![0.0, 45.0, 90.0, 135.0]; // reset to valid value
     input.weather.humidity = -10.0; // invalid humidity
     let sim_result = MonteCarloSimulation::new(input.clone());
     assert!(sim_result.is_err());
@@ -280,6 +284,8 @@ fn get_grade_and_headwind_use_closest_distance_and_advance_indices() {
             temperature: ThermodynamicTemperature::new::<degree_celsius>(20.0),
             humidity: 50.0,
             solar_radiation: HeatFluxDensity::new::<watt_per_square_meter>(700.0),
+            wind_speed: Velocity::new::<meter_per_second>(5.0),
+            wind_azimuth: 90.0,
         },
         course: CourseProfile {
             distance: vec![
@@ -289,12 +295,7 @@ fn get_grade_and_headwind_use_closest_distance_and_advance_indices() {
                 Length::new::<meter>(300.0),
             ],
             grade: vec![0.0, 4.0, -3.0, 2.0],
-            headwind: vec![
-                Velocity::new::<meter_per_second>(0.2),
-                Velocity::new::<meter_per_second>(1.0),
-                Velocity::new::<meter_per_second>(2.0),
-                Velocity::new::<meter_per_second>(3.0),
-            ],
+            azimuth: vec![0.0, 90.0, 180.0, 270.0],
         },
         runners: vec![RunnerParams {
             runner_id: 1 as u32,
@@ -332,7 +333,7 @@ fn get_grade_and_headwind_use_closest_distance_and_advance_indices() {
     assert_eq!(grade_index, 1);
     assert_eq!(headwind_index, 1);
     assert!((theta_120 - (0.04f64).atan()).abs() < 1e-12);
-    assert!((wind_120.get::<meter_per_second>() - 1.0).abs() < 1e-12);
+    assert!((wind_120.get::<meter_per_second>() + 5.0).abs() < 1e-12); // wind should be tailwind since azimuth are the same at 120m
 
     let (theta_190, wind_190) = sim
         .lookup_course_conditions(
@@ -344,7 +345,7 @@ fn get_grade_and_headwind_use_closest_distance_and_advance_indices() {
     assert_eq!(grade_index, 2);
     assert_eq!(headwind_index, 2);
     assert!((theta_190 - (-0.03f64).atan()).abs() < 1e-12);
-    assert!((wind_190.get::<meter_per_second>() - 2.0).abs() < 1e-12);
+    assert!((wind_190.get::<meter_per_second>()).abs() < 1e-12); // wind should be 0 at 190m since it's a crosswind
 
     let (theta_290, wind_290) = sim
         .lookup_course_conditions(
@@ -356,5 +357,5 @@ fn get_grade_and_headwind_use_closest_distance_and_advance_indices() {
     assert_eq!(grade_index, 3);
     assert_eq!(headwind_index, 3);
     assert!((theta_290 - (0.02f64).atan()).abs() < 1e-12);
-    assert!((wind_290.get::<meter_per_second>() - 3.0).abs() < 1e-12);
+    assert!((wind_290.get::<meter_per_second>() - 5.0).abs() < 1e-12); // wind should be headwind since azimuth are opposite at 290m
 }
