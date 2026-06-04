@@ -1,0 +1,11 @@
+project_id         = "your-gcp-project-id"
+region             = "us-central1"
+bucket_name        = "your-unique-stridesim-bucket"
+bucket_location    = "US"
+artifact_repository = "stridesim"
+
+github_repository = "your-github-org/StrideSim"
+github_branch     = "main"
+
+# Set true only if you intentionally want Terraform to delete non-empty bucket on destroy.
+bucket_force_destroy = false

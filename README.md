@@ -81,6 +81,12 @@ Use GCP Secret Manager and Github Actions to securely store and manage sensitive
 
 Refer to GCP documentation and the `docker-compose.yml` configuration for more details on cloud deployment options.
 
+### Infrastructure as Code (Terraform)
+
+This repository now includes Terraform configuration for the required GCP foundation (storage, artifact registry, IAM, workload identity federation, and secret placeholders).
+
+See `infra/terraform/README.md` for setup and apply steps.
+
 ---
 ## Development Setup
 
